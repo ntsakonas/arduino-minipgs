@@ -33,53 +33,44 @@ SoftwareSerial gpsModule(2, 3);
 // mock gps data - will be replaced with data from the  gps soon
 const char str1[] PROGMEM = "$GPRMC,201547.000,A,3014.5527,N,09749.5808,W,0.24,163.05,040109,,*1A";
 const char str2[] PROGMEM = "$GPGGA,201548.000,3014.5529,N,09749.5808,W,1,07,1.5,225.6,M,-22.5,M,18.8,0000*78";
-const char str3[] PROGMEM = "$GPRMC,201547.000,A,3014.5527,N,09749.5808,W,0.24,163.05,040109,,*1A\r\n$GPGGA,201548.000,3014.5529,N,09749.5808,W,1,07,1.5,225.6,M,-22.5,M,18.8,0000*78\r\n";
-//const char str3[] PROGMEM = "$GPRMC,,V,,,,,,,,,,N*53\r\n$GPGGA,,,,,,0,00,99.99,,,,,,*48\r\n";
-
-//===============================================
+const char str3[] /*PROGMEM*/ = "$GPRMC,201547.000,A,3014.5527,N,09749.5808,W,0.24,163.05,040109,,*1A\r\n$GPGGA,201548.000,3014.5529,N,09749.5808,W,1,07,1.5,225.6,M,-22.5,M,18.8,0000*78\r\n";
 
 const char* monthTable[12] ={"JAN","FEB","MAR","APR","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
-void setup()   {                
+void setup()   {              
+  // also send the data on the serial port  
   Serial.begin(115200);
-  Serial.println("MiniGPS v0.1");
+  Serial.println("MiniGPS v1.0");
   Serial.println("by N.Tsakonas (2018)");
+  Serial.println("inspired by a Scullcom Hobby Electronics project.");
   Serial.println();
 
+  // initialise gps module
   gpsModule.begin(9600);
 
-
-  display.begin(SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS);  // initialize with the I2C addr 0x3D (for the 128x64)
+  // initialise OLED screen
+  display.begin(SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS); 
   display.clearDisplay();
   display.setTextColor(WHITE);
-
-
-  /*
-  display.setTextSize(2);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.println("T 51.5062N");
-  display.println("N  0.0859W");
-  display.println("IO91wo67");
-  display.setTextSize(1);
-  display.println("28AUG2018 140259");
-  display.display();
-  delay(15000);*/
 } 
 
-static void formatFloat(float val, float invalid, int len, int prec, char* buffer)
+// format a coordinate (either latitude or longitude) into the buffer
+// both coordinates are formatted with fixed width for fitting the screen
+static void formatCoordinate(float value, char* buffer)
 {
-  if (val == invalid)
+  int width = 8, precision = 4;
+  if (value == TinyGPS::GPS_INVALID_F_ANGLE)
   {
-    memset(buffer, '-',len);
-    buffer[len] = 0;
+    memset(buffer, '-', width);
+    buffer[width] = 0;
   }
   else
   {
-    dtostrf(val, len, prec, buffer);
+    dtostrf(value, width, precision, buffer);
   }
 }
 
-void formatDate( char* buffer)
+// formats the latest valid date and time into the buffer 
+void formatDate(char* buffer)
 {
   int year;
   byte month, day, hour, minute, second, hundredths;
@@ -87,48 +78,59 @@ void formatDate( char* buffer)
   gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths, &age);
   if (age == TinyGPS::GPS_INVALID_AGE)
   {
-    strcpy(buffer, "------");
+    memset(buffer, '-', 8);
+    buffer[8] = 0;
   }else
   {
     sprintf(buffer, "%02d%s%04d %02d:%02d:%02d", day, monthTable[month-1], year, hour, minute, second);
   }
 }
 
+  // todo : calculate QTH locator
+void getLocator(float latitude, float longitude, char* buffer)
+{
+  memcpy(buffer,"IO91wa34", 8);
+  buffer[8] = 0;
+}
 
+// shows the current gps data on screen and also sends them to the serial port
 void get_gps_data()
 {
+  char buffer[32];
+
   float latitude, longitude;
   unsigned long age;
   gps.f_get_position(&latitude, &longitude, &age);
-  char buffer[32];
-  formatFloat(fabs(latitude), TinyGPS::GPS_INVALID_F_ANGLE, 8, 4,buffer);
-  strcat(buffer,latitude >0.0 ? "N":"S");
+  formatCoordinate(fabs(latitude), buffer);
+  strcat(buffer, latitude > 0.0 ? "N":"S");
 
   display.clearDisplay();
   display.setTextSize(2);
   display.setCursor(0,0);
   display.print("T");display.println(buffer);
   
-  Serial.print("Latitude :");Serial.println(buffer);
+  Serial.print("Latitude : ");Serial.println(buffer);
 
-  formatFloat(fabs(longitude), TinyGPS::GPS_INVALID_F_ANGLE, 8, 4,buffer);
-  strcat(buffer,longitude >0.0 ? "E":"W");
+  formatCoordinate(fabs(longitude), buffer);
+  strcat(buffer, longitude > 0.0 ? "E":"W");
   
   display.print("N");display.println(buffer);
-  Serial.print("Longitude:");Serial.println(buffer);
+  Serial.print("Longitude: ");Serial.println(buffer);
 
-  display.println("IO91wo67");
+  getLocator(latitude, longitude, buffer);
+  display.print("L ");display.println(buffer);
+  Serial.print("Locator  : ");Serial.println(buffer);
  
   formatDate(buffer);
-  
   display.setTextSize(1);
   display.println(buffer);
   
-  Serial.print("Date/Time:");Serial.println(buffer);
+  Serial.print("Date/Time: ");Serial.println(buffer);
+  Serial.println("----------");
   display.display();
 }
 
-// this was used with hardcoded nmea messages
+// this was used with hardcoded nmea messages for testing
 
 void feed_gps_data(const PROGMEM char *str)
 {
@@ -142,18 +144,13 @@ void feed_gps_data(const PROGMEM char *str)
   gps.encode('\n');
 }
 
-void gpsdump()
-{
-  get_gps_data();  
-}
-
 void loop() {
   feed_gps_data(str1);
-  gpsdump();  
-  delay(5000);  
+  get_gps_data();  
+  delay(1000);  
   feed_gps_data(str2);
-  gpsdump();  
-  delay(5000);  
+  get_gps_data();  
+  delay(1000);  
 }
 
 
@@ -163,10 +160,14 @@ int index=0;
 int rdIndex=0;
 int gps_module_read()
 {
-    byte c = pgm_read_byte_near(str3 + rdIndex);
+    // byte c = pgm_read_byte_near(str3 + rdIndex);
+    byte c = str3[rdIndex];
     rdIndex++;
-    if (c==0){
+    if (c==0 )
+    {
       rdIndex=0;
+      c = str3[rdIndex];
+      rdIndex++;
     }
     return c;
 }
@@ -180,24 +181,22 @@ bool feedgps()
     //Serial.println(gpsModule.read());
     char c = gps_module_read();
     
-    //skata[index]= c;
-    //if (index == 60 || skata[index] == '\r'|| skata[index] == '\n')
-    //{
-    //  skata[index+1] = 0;
-    //  Serial.println(skata);
-    //  index = 0;
-    //}else{
-    //index = (index + 1) % 64;
-    //}
-    //
+    skata[index]= c;
+    if (index == 60 || skata[index] == '\r'|| skata[index] == '\n')
+    {
+      skata[index+1] = 0;
+      Serial.print(skata);
+      index = 0;
+    }else{
+    index = (index + 1) % 64;
+    }
+    
     // if (gps.encode(gpsModule.read())) 
     if (gps.encode(c)) 
     {
-      //Serial.println("have full frame from gps");
      return true;
     }
   }  
-  //Serial.println("no full frame from gps");
   return false;
 }
 
@@ -209,12 +208,9 @@ void loop()
   bool newdata = false;
   unsigned long start = millis();
   // poll the gps module evey 1 sec (that means multiple messages )
-
   while(millis() - start < 1000){    
- //    Serial.println("polling gps...");
     if (feedgps()){
       newdata = true;
-      //break; 
     }
   }
   if (newdata)
@@ -222,6 +218,8 @@ void loop()
     Serial.println("have data from gps");
     get_gps_data();
   }
+
+  delay(2000);
 }
 */
 /*
