@@ -9,7 +9,9 @@
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 TinyGPS gps;
-SoftwareSerial gpsModule(2, 3);
+// SoftwareSerial gpsModule(2, 3);
+// swapped because it was easier on the board
+SoftwareSerial gpsModule(3, 2);
 
 const char* monthTable[12] ={"JAN","FEB","MAR","APR","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
 const char* INVALID_DATA = "--------";
