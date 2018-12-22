@@ -1,3 +1,24 @@
+// Copyright 2018, Nick Tsakonas
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+
+// this mini project implements a pocket size portable GPS.
+// it uses a low cost Ublox NEO-7M GPS module an arduino nano and an OLED screen
+// (see project description for schematic)
+// only the basic information are displayed on the screen (Latitude, Longitude, Date and Time and Maidenhead locator)
+
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -10,7 +31,7 @@ Adafruit_SSD1306 display(OLED_RESET);
 TinyGPS gps;
 SoftwareSerial gpsModule(3, 2);
 
-const char* locatorCharaters = "ABCDEFGHIJKLMNOPQRSTUVWX";
+const char* LOCATOR_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWX";
 const char* INVALID_DATA = "--------";
 void setup()   {
   // initialise gps module
@@ -86,7 +107,7 @@ void getLocator(float latitude, float longitude, char* buffer)
     double longitudeSeconds = (longitudeMinutes - (double)(longitudSubField * 5.0)) * 60.0;
     int latitudeSubSquare= (int)(latitudeSeconds / 15.0);
     int longitudSubSquare = (int)(longitudeSeconds / 30.0);
-    sprintf(buffer,"%c%c%d%d%c%c%d%d", locatorCharaters[longitudeField],locatorCharaters[latitudeField],longitudeSquare,latitudeSquare,locatorCharaters[longitudSubField]+32,locatorCharaters[latitudeSubField]+32,longitudSubSquare,latitudeSubSquare);
+    sprintf(buffer,"%c%c%d%d%c%c%d%d", LOCATOR_CHARACTERS[longitudeField],LOCATOR_CHARACTERS[latitudeField],longitudeSquare,latitudeSquare,LOCATOR_CHARACTERS[longitudSubField]+32,LOCATOR_CHARACTERS[latitudeSubField]+32,longitudSubSquare,latitudeSubSquare);
 }
 
 // shows the current gps data on screen
