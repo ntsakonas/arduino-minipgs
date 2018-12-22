@@ -3,7 +3,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <TinyGPS.h>
-#include <avr/pgmspace.h>
 #include <SoftwareSerial.h> 
 
 #define OLED_RESET 4
@@ -13,7 +12,6 @@ TinyGPS gps;
 // swapped because it was easier on the board
 SoftwareSerial gpsModule(3, 2);
 
-const char* monthTable[12] ={"JAN","FEB","MAR","APR","JUN","JUL","AUG","SEP","OCT","NOV","DEC"};
 const char* INVALID_DATA = "--------";
 void setup()   {
   // initialise gps module
@@ -53,7 +51,7 @@ void formatDate(char* buffer)
   if (age == TinyGPS::GPS_INVALID_AGE)
      strcpy(buffer, INVALID_DATA);
   else
-    sprintf(buffer, "%02d%s%04d %02d:%02d:%02d", day, monthTable[month-1], year, hour, minute, second);
+    sprintf(buffer, "%02d/%02d/%04d %02d:%02d:%02d", day, month, year, hour, minute, second);
 }
 
   // todo : calculate QTH locator
@@ -76,11 +74,11 @@ void show_gps_data()
   // show latitude
   formatCoordinate(fabs(latitude), buffer);
   strcat(buffer, latitude > 0.0 ? "N":"S");
-  display.print("T");display.println(buffer);
+  display.print("\x18");display.println(buffer);
   // show longitude
   formatCoordinate(fabs(longitude), buffer);
   strcat(buffer, longitude > 0.0 ? "E":"W");
-  display.print("N");display.println(buffer);
+  display.print("\x1a");display.println(buffer);
   // show grid locator
   getLocator(latitude, longitude, buffer);
   display.print("L ");display.println(buffer);
@@ -90,6 +88,35 @@ void show_gps_data()
   display.println(buffer);
   display.display();
 }
+
+/*
+void show_fake_gps_data()
+{
+  float latitude=51.234, longitude = 1.099;
+  unsigned long age;
+  //gps.f_get_position(&latitude, &longitude, &age);
+  char buffer[24];
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0,0);
+  // show latitude
+  formatCoordinate(fabs(latitude), buffer);
+  strcat(buffer, latitude > 0.0 ? "N":"S");
+  display.print("\x18");display.println(buffer);
+  // show longitude
+  formatCoordinate(fabs(longitude), buffer);
+  strcat(buffer, longitude > 0.0 ? "E":"W");
+  display.print("\x1a");display.println(buffer);
+  // show grid locator
+  getLocator(latitude, longitude, buffer);
+  display.print("L ");display.println(buffer);
+  // show date and time
+  display.setTextSize(1);
+  formatDate(buffer);  
+  display.println(buffer);
+  display.display();
+}*/
 
 bool read_data_from_gps()
 {
@@ -101,6 +128,7 @@ bool read_data_from_gps()
   return false;
 }
 
+/* this is the good loop*/
 void loop()
 {
   bool hasFreshData = false;
@@ -113,3 +141,10 @@ void loop()
   if (hasFreshData)
     show_gps_data();
 }
+
+/*
+void loop()
+{
+  bool hasFreshData = false;
+  show_fake_gps_data();
+}*/
