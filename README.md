@@ -10,6 +10,11 @@ The project is built using PlatformIO and all the libraries required are copied 
 
 The code is very straight forward and needs no special explanations.
 
+A prototype was built in a 2-layer sandwitch form on a 3cmx7cm prototype board. It is a bit bulky as a lot of connectors are used but it can be made vey flat if the connectors are removed. 
+
+
+There are no photos of the gps while in operation as the multiplexing of the screen does not allow any decent photos to be taken.
+
 
 References/Credits
 - https://github.com/infusion/Fritzing/tree/master/GY-NEO6MV2%20GPS
