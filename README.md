@@ -4,6 +4,7 @@ A small 128x64 OLED screen is used to display basic GPS information,such as lati
 
 A breadboarded schematic is shown below (made with Fritzing. Credits to Robert Eisele for the Fritzing GPS module part and for the idea of using TinyGPS lib, and to user `mtd` from the Fritzing forums for the OLED screen part)  
 
+![minigps_bb](https://user-images.githubusercontent.com/5435240/50376052-53aa9b80-05ff-11e9-89c0-52d2a1ef03b7.png)
 
 The project is built using PlatformIO and all the libraries required are copied into the `libs` folder so that you do not have to worry about having them installed.
 
