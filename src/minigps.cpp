@@ -8,15 +8,13 @@
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 TinyGPS gps;
-// SoftwareSerial gpsModule(2, 3);
-// swapped because it was easier on the board
 SoftwareSerial gpsModule(3, 2);
 
+const char* locatorCharaters = "ABCDEFGHIJKLMNOPQRSTUVWX";
 const char* INVALID_DATA = "--------";
 void setup()   {
   // initialise gps module
   gpsModule.begin(9600);
-
   // initialise OLED screen
   display.begin(SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS); 
   display.clearDisplay();
@@ -31,7 +29,7 @@ void setup()   {
 } 
 
 // format a coordinate (either latitude or longitude) into the buffer
-// both coordinates are formatted with fixed width for fitting the screen
+// both coordinates are formatted with fixed width for fitting on the screen
 static void formatCoordinate(float value, char* buffer)
 {
   int width = 8, precision = 4;
@@ -54,13 +52,44 @@ void formatDate(char* buffer)
     sprintf(buffer, "%02d/%02d/%04d %02d:%02d:%02d", day, month, year, hour, minute, second);
 }
 
-  // todo : calculate QTH locator
+// convert lat/lon to a Maidenhead locator 
 void getLocator(float latitude, float longitude, char* buffer)
 {
-   strcpy(buffer, INVALID_DATA);
+    if (latitude == TinyGPS::GPS_INVALID_F_ANGLE || longitude == TinyGPS::GPS_INVALID_F_ANGLE)
+    {
+     strcpy(buffer, INVALID_DATA);
+     return;
+    }
+    // normalise lon to south and lat to antimeridian of greenwich 
+    // (this normalisation gives the Prime Meridian a false easting of 180 degrees
+    // and the equator a false northing of 90 degrees.)
+    double normalisedLatitude  = latitude + 90.0;
+    double normalisedLongitude = longitude + 180.0;
+    // calculate the first pair (the field)
+    // this is made from 18 zones - A to R
+    int latitudeField = (int)(normalisedLatitude / 10.0);
+    int longitudeField = (int)(normalisedLongitude / 20.0);
+    // calculate the second pair (the square)
+    // this is made from 10 zones - 0 to 9
+    int latitudeSquare = (int)(normalisedLatitude - (double)(latitudeField * 10.0));
+    int longitudeSquare = (int)((normalisedLongitude - (double)(longitudeField *  20.0)) /2 );
+    // calculate the third pair (the sub field)
+    // this is made from 10 zones - A to W
+    double latitudeMinutes = (normalisedLatitude - (double)(latitudeField * 10.0) - (double)latitudeSquare) * 60.0;
+    double longitudeMinutes = (normalisedLongitude - (double)(longitudeField *  20.0) - (double)(longitudeSquare *2)) * 60.0;
+
+    int latitudeSubField = (int)(latitudeMinutes / 2.5);
+    int longitudSubField = (int)(longitudeMinutes / 5.0);
+    // calculate the fourth pair (the sub square)
+    // this is made from 10 zones - A to W
+    double latitudeSeconds = (latitudeMinutes - (double)(latitudeSubField * 2.5)) * 60.0;
+    double longitudeSeconds = (longitudeMinutes - (double)(longitudSubField * 5.0)) * 60.0;
+    int latitudeSubSquare= (int)(latitudeSeconds / 15.0);
+    int longitudSubSquare = (int)(longitudeSeconds / 30.0);
+    sprintf(buffer,"%c%c%d%d%c%c%d%d", locatorCharaters[longitudeField],locatorCharaters[latitudeField],longitudeSquare,latitudeSquare,locatorCharaters[longitudSubField]+32,locatorCharaters[latitudeSubField]+32,longitudSubSquare,latitudeSubSquare);
 }
 
-// shows the current gps data on screen and also sends them to the serial port
+// shows the current gps data on screen
 void show_gps_data()
 {
   float latitude, longitude;
@@ -89,35 +118,6 @@ void show_gps_data()
   display.display();
 }
 
-/*
-void show_fake_gps_data()
-{
-  float latitude=51.234, longitude = 1.099;
-  unsigned long age;
-  //gps.f_get_position(&latitude, &longitude, &age);
-  char buffer[24];
-
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setCursor(0,0);
-  // show latitude
-  formatCoordinate(fabs(latitude), buffer);
-  strcat(buffer, latitude > 0.0 ? "N":"S");
-  display.print("\x18");display.println(buffer);
-  // show longitude
-  formatCoordinate(fabs(longitude), buffer);
-  strcat(buffer, longitude > 0.0 ? "E":"W");
-  display.print("\x1a");display.println(buffer);
-  // show grid locator
-  getLocator(latitude, longitude, buffer);
-  display.print("L ");display.println(buffer);
-  // show date and time
-  display.setTextSize(1);
-  formatDate(buffer);  
-  display.println(buffer);
-  display.display();
-}*/
-
 bool read_data_from_gps()
 {
   while (gpsModule.available()) 
@@ -128,7 +128,6 @@ bool read_data_from_gps()
   return false;
 }
 
-/* this is the good loop*/
 void loop()
 {
   bool hasFreshData = false;
@@ -141,10 +140,3 @@ void loop()
   if (hasFreshData)
     show_gps_data();
 }
-
-/*
-void loop()
-{
-  bool hasFreshData = false;
-  show_fake_gps_data();
-}*/
